@@ -95,10 +95,7 @@ public class MainActivity extends AppCompatActivity {
        buildBulletModel();
         Button shoot= findViewById(R.id.shootButton);
         shoot.setOnClickListener(v -> {
-            if (shouldStartTimer) {
-                startTimer();
-                shouldStartTimer=false;
-            }
+
             if(countdownBoolean==true) {
                 shoot();
             }
@@ -143,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
         node.setRenderable(bulletRenderable);
         scene.addChild(node);
 
-        Vector3 vec=new Vector3(5,5,5);
+        //Vector3 vec=new Vector3(5,5,5);
 
 
 
@@ -162,15 +159,19 @@ public class MainActivity extends AppCompatActivity {
                             if (nodeInContact != null) {
 
                                 if (nodeInContact.getName().equals("TNT")) {
-                                    Log.d("D","Exploded");
-                                    double min1=0;
-                                    double min2=0;
-                                    Vector3 v1=null;
-                                    Vector3 v2=null;
+                                    //Log.d("D","Exploded");
+                                    //double min1=0;
+                                    // double min2=0;
+                                    // Vector3 v1=null;
+                                    //Vector3 v2=null;
                                     tntLeft--;
                                     tnts.remove(vector3);
                                     scene.removeChild(nodeInContact);
-                                    for(int c=0; c<balloons.size();c++){
+                                    if (tntLeft == 0) {
+                                        addTnt();
+                                        tntLeft = 8;
+                                    }
+                                   /* for(int c=0; c<balloons.size();c++){
 
                                            double minumum=getDistance(balloons.get(c), vector3);
                                            if(checkMinumum(min1, minumum)) {
@@ -195,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
 
-
+*/
                               /*      Node tnt=new Node();
 
                                     tnt.setRenderable(tntRenderable);
@@ -223,40 +224,31 @@ public class MainActivity extends AppCompatActivity {
                                 }*/
 
 
-                             else if (nodeInContact.getName().equals("Balloon")) {
+                                } else if (nodeInContact.getName().equals("Balloon")) {
                                     balloonsLeft--;
                                     balloons.remove(vector3);
-                                    Log.d("D","Ballooonnn");
-
-                                    scene.removeChild(nodeInContact);
+                                    // Log.d("D","Ballooonnn");
                                     balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
 
-                                }}
+                                    scene.removeChild(nodeInContact);
 
 
-                            if (balloonsLeft == 0) {
-                                startTimer();
-                                countDownMode();
-                                addBaloonsToScene();
-                                startTimer();
-                                if (tntLeft == 0) {
-                                    addTnt();
-                                    tntLeft = 8;
+                                    if (balloonsLeft == 0) {
+                                        countDownMode();
+                                        addBaloonsToScene();
+                                        balloonsLeft = 20;
+
+                                        startTimer();
+
+                                    }
+
+
+                                    soundPool.play(sound, 1f, 1f, 1, 0
+                                            , 1f);
+
                                 }
-                                balloonsLeft = 20;
-                            }
 
-
-
-
-
-
-                        soundPool.play(sound, 1f, 1f, 1, 0
-                                , 1f);
-
-                    }
-
-                    );
+                            }});
 
                     try {
                         Thread.sleep(30);
@@ -268,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> scene.removeChild(node));
 
-        }).start();
+                }).start();
 
     }
     public double getDistance(Vector3 v1, Vector3 v2){
@@ -324,6 +316,7 @@ public class MainActivity extends AppCompatActivity {
     private void startTimer(){
         TextView timer=findViewById(R.id.timerText);
         new Thread(()->{
+
             int seconds = 0;
             while (balloonsLeft > 0) {
                 try {
