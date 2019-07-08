@@ -7,6 +7,7 @@ import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
 import android.view.View;
@@ -26,6 +27,7 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.Texture;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -36,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private Scene scene;
     private Camera camera;
     private ModelRenderable bulletRenderable;
+    private ModelRenderable tntRenderable;
     private boolean shouldStartTimer = true;
     private int balloonsLeft = 20;
     boolean countdownBoolean=false;
@@ -43,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView balloonsLeftTxt;
     private TextView countdown;
     private SoundPool soundPool;
+    int timeLeft;
     private int sound;
     Button bt_restart;
     ArrayList<Vector3> balloons= new ArrayList<>();
@@ -91,10 +95,7 @@ public class MainActivity extends AppCompatActivity {
        buildBulletModel();
         Button shoot= findViewById(R.id.shootButton);
         shoot.setOnClickListener(v -> {
-            if (shouldStartTimer) {
-                startTimer();
-                shouldStartTimer=false;
-            }
+
             if(countdownBoolean==true) {
                 shoot();
             }
@@ -139,53 +140,115 @@ public class MainActivity extends AppCompatActivity {
         node.setRenderable(bulletRenderable);
         scene.addChild(node);
 
+        //Vector3 vec=new Vector3(5,5,5);
+
+
+
         new Thread(()->{
             for (int i = 0;i < 200;i++) {
 
                 int finalI = i;
                 runOnUiThread(() -> {
 
-                    Vector3 vector3 = ray.getPoint(finalI * 0.1f);
-                    node.setWorldPosition(vector3);
-
-                    Node nodeInContact = scene.overlapTest(node);
-
-                    if (nodeInContact != null) {
-
-                        if(nodeInContact.getName().equals("TNT")){
-                            tntLeft--;
-                            tnts.remove(vector3);
-                            
-                        }else if(nodeInContact.getName().equals("Balloon")){
-                            balloonsLeft--;
-                            balloons.remove(vector3);
-
-                        }
+                            Vector3 vector3 = ray.getPoint(finalI * 0.1f);
+                            node.setWorldPosition(vector3);
 
 
+                            Node nodeInContact = scene.overlapTest(node);
 
-                        if (balloonsLeft == 0) {
-                            countDownMode();
-                            addBaloonsToScene();
-                            startTimer();
-                            if(tntLeft==0){
-                                addTnt();
-                                tntLeft=8;
-                            }
-                            balloonsLeft = 20;
-                        }
+                            if (nodeInContact != null) {
+
+                                if (nodeInContact.getName().equals("TNT")) {
+                                    //Log.d("D","Exploded");
+                                    //double min1=0;
+                                    // double min2=0;
+                                    // Vector3 v1=null;
+                                    //Vector3 v2=null;
+                                    tntLeft--;
+                                    tnts.remove(vector3);
+                                    scene.removeChild(nodeInContact);
+                                    if (tntLeft == 0) {
+                                        addTnt();
+                                        tntLeft = 8;
+                                    }
+                                   /* for(int c=0; c<balloons.size();c++){
+
+                                           double minumum=getDistance(balloons.get(c), vector3);
+                                           if(checkMinumum(min1, minumum)) {
+                                               min1=minumum;
+                                              v1=balloons.get(c);
+                                           }else if(checkMinumum(min2, minumum )){
+                                               v2=balloons.get(c);
+                                               min2=minumum;
 
 
-                        balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
-                        scene.removeChild(nodeInContact);
+                                        }}
+                                    balloonsLeft--;
+                                    balloons.remove(v1);
+                                        nodeInContact.setWorldPosition(v1);
+                                        scene.removeChild(nodeInContact);
+                                        balloonsLeft--;
+                                        balloons.remove(v2);
+                                        nodeInContact.setWorldPosition(v2);
+                                        scene.removeChild(nodeInContact);
 
 
-                        soundPool.play(sound, 1f, 1f, 1, 0
-                                , 1f);
+                                    }
 
-                    }
 
-                    });
+*/
+                              /*      Node tnt=new Node();
+
+                                    tnt.setRenderable(tntRenderable);
+                            for(int c=0; c<balloonsLeft; c++){
+                                Vector3 new2=balloons.get(c);
+                                min=Vector3.angleBetweenVectors(vector3,new2);
+                             */
+
+
+
+
+                           /* float x=vector3.x-2;
+                            float y=vector3.y-2;
+                                while(x<vector3.x+2){
+                                    while(y<vector3.y+2){
+                                        vector3.set(x,y,vector3.z);
+                                        node.setWorldPosition(vector3);
+                                        nodeInContact=scene.overlapTest(node);
+                                        if(nodeInContact!=null){
+                                            scene.removeChild(nodeInContact);
+                                        }
+                                        y+=1;
+                                    }
+                                    x+=1;
+                                }*/
+
+
+                                } else if (nodeInContact.getName().equals("Balloon")) {
+                                    balloonsLeft--;
+                                    balloons.remove(vector3);
+                                    // Log.d("D","Ballooonnn");
+                                    balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
+
+                                    scene.removeChild(nodeInContact);
+
+
+                                    if (balloonsLeft == 0) {
+                                        countDownMode();
+                                        addBaloonsToScene();
+                                        balloonsLeft = 20;
+
+                                        startTimer();
+
+                                    }
+
+
+                                    soundPool.play(sound, 1f, 1f, 1, 0
+                                            , 1f);
+
+                                }
+
+                            }});
 
                     try {
                         Thread.sleep(30);
@@ -197,9 +260,26 @@ public class MainActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> scene.removeChild(node));
 
-        }).start();
+                }).start();
 
     }
+    public double getDistance(Vector3 v1, Vector3 v2){
+        double i;
+        i=Math.sqrt(((v1.x-v2.x)*(v1.x-v2.x)+((v1.y-v2.y)*(v1.y-v2.y))+((v1.z-v2.z)*(v1.z-v2.z))));
+        return i;
+    }
+    public boolean checkMinumum(double min1, double minumum){
+        if(min1==0){
+
+            return true;
+        }else if(min1>minumum){
+
+            return true;
+        }
+        return  false;
+    }
+
+
 
 
 
@@ -214,9 +294,9 @@ public class MainActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (action == KeyEvent.ACTION_UP) {
                     //TODO
-
+                    if(countdownBoolean==true) {
                         shoot();
-
+                    }
                 }
                 return true;
 
@@ -225,8 +305,8 @@ public class MainActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (action == KeyEvent.ACTION_UP) {
                     //TODO
-
-                    shoot();}
+                    if(countdownBoolean==true) {
+                    shoot();}}
                 return true;
 
             default:
@@ -236,6 +316,7 @@ public class MainActivity extends AppCompatActivity {
     private void startTimer(){
         TextView timer=findViewById(R.id.timerText);
         new Thread(()->{
+
             int seconds = 0;
             while (balloonsLeft > 0) {
                 try {
@@ -248,14 +329,32 @@ public class MainActivity extends AppCompatActivity {
 
                 int minutesPassed = seconds / 60;
                 int secondsPassed = seconds % 60;
+
                 runOnUiThread(() -> timer.setText(minutesPassed + ":" + secondsPassed));
-            } }).start();
+
+            }
+
+        }).start();
+
 
     }
 
 
+    /*private void buildExplosion(){
+        Texture
+                .builder()
+                .setSource(this,R.drawable.desktop)
+                .build()
+                .thenAccept(texture -> ) {
+
+                    tntRenderable=ShapeFactory
+                            .
 
 
+
+        }
+    }
+*/
     private void buildBulletModel() {
 
         Texture
@@ -334,7 +433,7 @@ public class MainActivity extends AppCompatActivity {
                         Vector3 v1  =new Vector3( (float) x,
                                 y/10f,
                                 (float) z);
-                        balloons.add(v1);
+                        balloons.add( v1);
 
                         node.setWorldPosition(v1);
                     }
