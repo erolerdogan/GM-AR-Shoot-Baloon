@@ -6,6 +6,7 @@ import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Display;
@@ -34,14 +35,14 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
-    private int tntLeft=0;
+    private int tntLeft = 0;
     private Scene scene;
     private Camera camera;
     private ModelRenderable bulletRenderable;
     private ModelRenderable tntRenderable;
     private boolean shouldStartTimer = true;
     private int balloonsLeft = 20;
-    boolean countdownBoolean=false;
+    boolean countdownBoolean = false;
     private Point point;
     private TextView balloonsLeftTxt;
     private TextView countdown;
@@ -49,29 +50,26 @@ public class MainActivity extends AppCompatActivity {
     int timeLeft;
     private int sound;
     Button bt_restart;
-    ArrayList<Vector3> balloons= new ArrayList<>();
-    ArrayList<Vector3> tnts= new ArrayList<>();
-
-
-
+    ArrayList<Vector3> balloons = new ArrayList<>();
+    ArrayList<Vector3> tnts = new ArrayList<>();
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Display display=getWindowManager().getDefaultDisplay();
-        point=new Point();
+        Display display = getWindowManager().getDefaultDisplay();
+        point = new Point();
         display.getRealSize(point);
         setContentView(R.layout.activity_main);
         loadSoundPool();
-        balloonsLeftTxt=findViewById(R.id.balloonsCntTxt);
-        bt_restart=findViewById(R.id.restart);
-        countdown=findViewById(R.id.countDown);
+        balloonsLeftTxt = findViewById(R.id.balloonsCntTxt);
+        bt_restart = findViewById(R.id.restart);
+        countdown = findViewById(R.id.countDown);
         countdown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 countdown.setVisibility(View.INVISIBLE);
-                countdownBoolean=true;
+                countdownBoolean = true;
             }
         });
 
@@ -90,13 +88,14 @@ public class MainActivity extends AppCompatActivity {
         scene = arFragment.getArSceneView().getScene();
         camera = scene.getCamera();
 
-       addBaloonsToScene();
+        addBaloonsToScene();
+        addTnt();
         countDownMode();
-       buildBulletModel();
-        Button shoot= findViewById(R.id.shootButton);
+        buildBulletModel();
+        Button shoot = findViewById(R.id.shootButton);
         shoot.setOnClickListener(v -> {
 
-            if(countdownBoolean==true) {
+            if (countdownBoolean) {
                 shoot();
             }
 
@@ -104,18 +103,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-
-
-
-
-
     }
 
 
-
-
-    private void loadSoundPool(){
-        AudioAttributes audioAttributes=new AudioAttributes.Builder()
+    private void loadSoundPool() {
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_GAME)
                 .build();
@@ -129,48 +121,108 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
-    private void countDownMode(){
-       countdown.setVisibility(View.VISIBLE);
-       countdownBoolean=false;
+
+    private void countDownMode() {
+        countdown.setVisibility(View.VISIBLE);
+        countdownBoolean = false;
     }
 
     private void shoot() {
-        Ray ray= camera.screenPointToRay(point.x  /2f,point.y /2f);
-        Node node= new Node();
+        Ray ray = camera.screenPointToRay(point.x / 2f, point.y / 2f);
+        Node node = new Node();
         node.setRenderable(bulletRenderable);
         scene.addChild(node);
 
         //Vector3 vec=new Vector3(5,5,5);
 
 
-
-        new Thread(()->{
-            for (int i = 0;i < 200;i++) {
+        new Thread(() -> {
+            for (int i = 0; i < 200; i++) { //for loop decides when the bullet disappears
 
                 int finalI = i;
                 runOnUiThread(() -> {
 
-                            Vector3 vector3 = ray.getPoint(finalI * 0.1f);
-                            node.setWorldPosition(vector3);
+                    Vector3 vector3 = ray.getPoint(finalI * 0.1f);
+                    node.setWorldPosition(vector3);
 
 
-                            Node nodeInContact = scene.overlapTest(node);
+                    Node nodeInContact = scene.overlapTest(node);
 
-                            if (nodeInContact != null) {
+                    if (nodeInContact != null) {
 
-                                if (nodeInContact.getName().equals("TNT")) {
-                                    //Log.d("D","Exploded");
-                                    //double min1=0;
-                                    // double min2=0;
-                                    // Vector3 v1=null;
-                                    //Vector3 v2=null;
-                                    tntLeft--;
-                                    tnts.remove(vector3);
-                                    scene.removeChild(nodeInContact);
-                                    if (tntLeft == 0) {
-                                        addTnt();
-                                        tntLeft = 8;
+                        if (nodeInContact.getName().equals("TNT")) {
+
+                            final Handler handler = new Handler();
+                            Runnable tntExplosion = new Runnable() {
+                                int tntX = (int) nodeInContact.getLocalPosition().x - 5;
+                                int xBound = tntX + 10;
+                                int tntY = (int) (nodeInContact.getLocalPosition().y * 10f) - 5;
+                                int yBound = tntY + 10;
+                                int tntZ = (int) nodeInContact.getLocalPosition().z - 5;
+                                int zBound = tntZ + 10;
+                                @Override
+                                public void run() {
+
+                                    for (int axisX = tntX ; axisX < xBound; axisX++) {
+
+                                        for (int axisY = tntY; axisY < yBound; axisY++) {
+
+                                            for (int axisZ = tntZ ; axisZ < zBound ; axisZ++) {
+
+                                                Vector3 vExpArea = new Vector3((float)axisX/1f , axisY/10f , (float)axisZ/1f);
+                                                node.setWorldPosition(vExpArea);
+                                                Node nodeInExp = scene.overlapTest(node);
+                                                if (nodeInExp != null) {
+
+                                                    if (nodeInExp.getName().equals("Balloon")) {
+
+                                                        balloonsLeft--;
+                                                        balloons.remove(vExpArea);
+                                                        // Log.d("D","Ballooonnn");
+                                                        balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
+
+                                                        scene.removeChild(nodeInExp);
+
+
+                                                        if (balloonsLeft == 0) {
+                                                            countDownMode();
+                                                            addBaloonsToScene();
+                                                            balloonsLeft = 20;
+
+                                                            startTimer();
+
+                                                        }
+
+
+                                                        soundPool.play(sound, 1f, 1f, 1, 0
+                                                                , 1f);
+
+                                                    }
+                                                }
+
+                                            }
+                                        }
                                     }
+
+                                    handler.postDelayed(this, 10000);
+
+                                }
+
+
+                            };
+                            tntExplosion.run();
+                            //Log.d("D","Exploded");
+                            //double min1=0;
+                            // double min2=0;
+                            // Vector3 v1=null;
+                            //Vector3 v2=null;
+                            tntLeft--;
+                            tnts.remove(vector3);
+                            scene.removeChild(nodeInContact);
+                            if (tntLeft == 0) {
+                                addTnt();
+                                tntLeft = 4;
+                            }
                                    /* for(int c=0; c<balloons.size();c++){
 
                                            double minumum=getDistance(balloons.get(c), vector3);
@@ -224,63 +276,67 @@ public class MainActivity extends AppCompatActivity {
                                 }*/
 
 
-                                } else if (nodeInContact.getName().equals("Balloon")) {
-                                    balloonsLeft--;
-                                    balloons.remove(vector3);
-                                    // Log.d("D","Ballooonnn");
-                                    balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
+                        } else if (nodeInContact.getName().equals("Balloon")) {
+                            balloonsLeft--;
+                            balloons.remove(vector3);
+                            // Log.d("D","Ballooonnn");
+                            balloonsLeftTxt.setText("Balloons Left: " + balloonsLeft);
 
-                                    scene.removeChild(nodeInContact);
-
-
-                                    if (balloonsLeft == 0) {
-                                        countDownMode();
-                                        addBaloonsToScene();
-                                        balloonsLeft = 20;
-
-                                        startTimer();
-
-                                    }
+                            scene.removeChild(nodeInContact);
 
 
-                                    soundPool.play(sound, 1f, 1f, 1, 0
-                                            , 1f);
+                            if (balloonsLeft == 0) {
+                                countDownMode();
+                                addBaloonsToScene();
+                                balloonsLeft = 20;
 
-                                }
+                                startTimer();
 
-                            }});
+                            }
 
-                    try {
-                        Thread.sleep(30);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+
+                            soundPool.play(sound, 1f, 1f, 1, 0
+                                    , 1f);
+
+                        }
+
                     }
-
+                });
+                try {
+                    Thread.sleep(10, 15);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
+/*                try {
+                    Thread.sleep(30);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }*/
 
-                runOnUiThread(() -> scene.removeChild(node));
+            }
 
-                }).start();
+            runOnUiThread(() -> scene.removeChild(node));
+
+        }).start();
 
     }
-    public double getDistance(Vector3 v1, Vector3 v2){
+
+    public double getDistance(Vector3 v1, Vector3 v2) {
         double i;
-        i=Math.sqrt(((v1.x-v2.x)*(v1.x-v2.x)+((v1.y-v2.y)*(v1.y-v2.y))+((v1.z-v2.z)*(v1.z-v2.z))));
+        i = Math.sqrt(((v1.x - v2.x) * (v1.x - v2.x) + ((v1.y - v2.y) * (v1.y - v2.y)) + ((v1.z - v2.z) * (v1.z - v2.z))));
         return i;
     }
-    public boolean checkMinumum(double min1, double minumum){
-        if(min1==0){
+
+    public boolean checkMinumum(double min1, double minumum) {
+        if (min1 == 0) {
 
             return true;
-        }else if(min1>minumum){
+        } else if (min1 > minumum) {
 
             return true;
         }
-        return  false;
+        return false;
     }
-
-
-
 
 
     @Override
@@ -294,28 +350,30 @@ public class MainActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (action == KeyEvent.ACTION_UP) {
                     //TODO
-                    if(countdownBoolean==true) {
+                    if (countdownBoolean == true) {
                         shoot();
                     }
                 }
                 return true;
 
 
-
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (action == KeyEvent.ACTION_UP) {
                     //TODO
-                    if(countdownBoolean==true) {
-                    shoot();}}
+                    if (countdownBoolean == true) {
+                        shoot();
+                    }
+                }
                 return true;
 
             default:
                 return super.dispatchKeyEvent(event);
-        }}
+        }
+    }
 
-    private void startTimer(){
-        TextView timer=findViewById(R.id.timerText);
-        new Thread(()->{
+    private void startTimer() {
+        TextView timer = findViewById(R.id.timerText);
+        new Thread(() -> {
 
             int seconds = 0;
             while (balloonsLeft > 0) {
@@ -380,26 +438,26 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void addTnt(){
+    private void addTnt() {
         ModelRenderable
                 .builder()
                 .setSource(this, Uri.parse("model.sfb"))
                 .build()
-                .thenAccept(renderable->{
-                    for(int i=0; i<7;i++){
-                        Node node=new Node();
+                .thenAccept(renderable -> {
+                    for (int i = 0; i < 4; i++) {
+                        Node node = new Node();
                         node.setRenderable(renderable);
                         scene.addChild(node);
                         node.setName("TNT");
 
-                        Random random= new Random();
-                        int x=random.nextInt(10);
-                        int y= random.nextInt(10);
-                        int z=random.nextInt(15);
+                        Random random = new Random();
+                        int x = random.nextInt(10);
+                        int y = random.nextInt(10);
+                        int z = random.nextInt(15);
 
-                        z=-z;
-                        Vector3 v1  =new Vector3( (float) x,
-                                y/10f,
+                        z = -z;
+                        Vector3 v1 = new Vector3((float) x,
+                                y / 10f,
                                 (float) z);
                         tnts.add(v1);
                         node.setWorldPosition(v1
@@ -409,31 +467,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-
     private void addBaloonsToScene() {
         ModelRenderable
                 .builder()
                 .setSource(this, Uri.parse("balloon.sfb"))
                 .build()
-                .thenAccept(renderable->{
-                    for(int i=0; i<20;i++){
-                        Node node=new Node();
+                .thenAccept(renderable -> {
+                    for (int i = 0; i < 20; i++) {
+                        Node node = new Node();
                         node.setRenderable(renderable);
                         scene.addChild(node);
                         node.setName("Balloon");
 
-                        Random random= new Random();
-                        int x=random.nextInt(10);
-                        int y= random.nextInt(10);
-                        int z=random.nextInt(15);
+                        Random random = new Random();
+                        int x = random.nextInt(10);
+                        int y = random.nextInt(10);
+                        int z = random.nextInt(15);
 
 
-                        z=-z;
-                        Vector3 v1  =new Vector3( (float) x,
-                                y/10f,
+                        z = -z;
+                        Vector3 v1 = new Vector3((float) x,
+                                y / 10f,
                                 (float) z);
-                        balloons.add( v1);
+                        balloons.add(v1);
 
                         node.setWorldPosition(v1);
                     }
